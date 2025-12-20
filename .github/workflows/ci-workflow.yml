@@ -181,6 +181,7 @@ jobs:
     name: Generate Documentation
     runs-on: ubuntu-latest
     if: github.ref_type != 'tag'
+    needs: [lint]
     steps:
       - name: Generate GitHub App Token
         id: app-token
@@ -195,8 +196,16 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
+      - name: Pull latest changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          git merge "origin/$BRANCH" --no-edit || true
+
       - name: Generate Documentation
-        uses: kolosys/proton@v1.3
+        uses: kolosys/proton@v1.4
         with:
           token: ${{ steps.app-token.outputs.token }}
           output-directory: ${{ github.event.inputs.output_directory || 'docs' }}
