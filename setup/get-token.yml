@@ -1,0 +1,32 @@
+name: Get GitHub App Token
+description: "Get GitHub App token"
+author: "Kolosys"
+
+branding:
+  icon: "key"
+  color: "blue"
+
+inputs:
+  app-id:
+    description: "GitHub App ID"
+    required: true
+    type: string
+  private-key:
+    description: "GitHub App private key"
+    required: true
+    type: string
+
+outputs:
+  token:
+    description: "GitHub App token"
+    value: ${{ steps.get-token.outputs.token }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get GitHub App Token
+      id: get-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
