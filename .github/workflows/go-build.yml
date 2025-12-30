@@ -13,6 +13,16 @@ on:
         required: false
         type: string
         default: "false"
+      examples-uses-modules:
+        description: "Examples containing go.mod files to build"
+        required: false
+        type: string
+        default: "false"
+      examples-skip:
+        description: "Skip building examples"
+        required: false
+        type: string
+        default: "false"
     secrets:
       app_id:
         description: "GitHub App ID for authentication"
@@ -53,9 +63,14 @@ jobs:
         run: go mod download
 
       - name: Build
-        run: go build -v ./...
+        run: go build -v $(go list ./... | grep -v '/examples')
 
-      - name: Build examples
+      - name: Build Examples
+        if: inputs.examples-uses-modules == 'false' && inputs.examples-skip != 'true'
+        run: go build -v ./examples/...
+
+      - name: Build Examples Using Modules
+        if: inputs.examples-uses-modules == 'true' && inputs.examples-skip != 'true'
         run: |
           set -e  # Exit on any error
           find examples -name "go.mod" -exec dirname {} \; | while read -r dir; do
