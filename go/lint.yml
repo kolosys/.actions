@@ -1,0 +1,97 @@
+name: Lint & Format
+description: "Lint and format Go code"
+author: "Kolosys"
+
+branding:
+  icon: "check-circle"
+  color: "green"
+
+inputs:
+  go-version:
+    description: "Go version to use"
+    required: false
+    default: "1.24"
+  skip:
+    description: "Skip linting and formatting"
+    required: false
+    default: "false"
+  auto-commit:
+    description: "Automatically commit formatted code"
+    required: false
+    default: "false"
+
+outputs:
+  success:
+    description: "Linting and formatting successful"
+    value: ${{ steps.lint.outputs.success }}
+
+runs:
+  using: "composite"
+  if: inputs.skip == 'false'
+  steps:
+    - name: Get GitHub App Token
+      id: get-token
+      uses: actions/create-github-app-token@v1
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        token: ${{ steps.get-token.outputs.token }}
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run golangci-lint
+      uses: golangci/golangci-lint-action@v8
+      with:
+        version: latest
+        args: --fast-only --timeout=5m
+
+    - name: Format code
+      run: go fmt ./...
+
+    - name: Verify formatting changes
+      id: verify-changed-files
+      run: |
+        if git diff --quiet --exit-code -- "**/*.go"; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+          echo "No formatting changes detected"
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "Formatting changes detected"
+          git diff --name-only -- "**/*.go"
+        fi
+
+    - name: Commit formatted code
+      if: inputs.auto-commit == 'true'
+      uses: stefanzweifel/git-auto-commit-action@v5
+      with:
+        commit_message: "Reformat code [skip ci]"
+        file_pattern: "**/*.go"
+        commit_user_name: "github-actions[bot]"
+        commit_user_email: "github-actions[bot]@users.noreply.github.com"
+        commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+        skip_dirty_check: true
+        skip_fetch: true
+        skip_checkout: true
+
+    - name: Check for linting errors
+      if: inputs.auto-commit == 'true'
+      id: lint-errors
+      run: |
+        if git diff --quiet --exit-code; then
+          echo "success=true" >> $GITHUB_OUTPUT
+          echo "Linting and formatting successful"
+        else
+          echo "success=false" >> $GITHUB_OUTPUT
+          echo "Linting and formatting failed"
+        fi
