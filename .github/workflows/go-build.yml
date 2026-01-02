@@ -67,7 +67,12 @@ jobs:
 
       - name: Build Examples
         if: inputs.examples-uses-modules == 'false' && inputs.examples-skip != 'true'
-        run: go build -v ./examples/...
+        run: |
+          if [ -d examples ]; then
+            go build -v ./examples/...
+          else
+            echo "No examples directory found, skipping examples build."
+          fi
 
       - name: Build Examples Using Modules
         if: inputs.examples-uses-modules == 'true' && inputs.examples-skip != 'true'
